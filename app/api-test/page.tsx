@@ -4,14 +4,43 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
-import { getChannelInfo, getChannelVideos, analyzeOptimalPostTimes, generateHeatmapFromVideos } from '@/lib/youtube';
+import { getChannelInfo, getChannelVideos, analyzeOptimalPostTimes } from '@/lib/youtube';
+
+interface ChannelData {
+  channelId: string;
+  channelName: string;
+  channelIcon: string;
+  subscriberCount: number;
+  totalViews: number;
+  videosAnalyzed: number;
+  description: string;
+}
+
+interface VideoData {
+  id: string;
+  title: string;
+  thumbnail: string;
+  publishedAt: string;
+  viewCount: number;
+  likeCount: number;
+  commentCount: number;
+  engagementRate: number;
+}
+
+interface OptimalTime {
+  dayOfWeek: number;
+  hour: number;
+  averageViews: number;
+  averageEngagement: number;
+  sampleSize: number;
+}
 
 export default function APITestPage() {
   const [channelId, setChannelId] = useState('');
   const [loading, setLoading] = useState(false);
-  const [channelData, setChannelData] = useState<any>(null);
-  const [videos, setVideos] = useState<any[]>([]);
-  const [optimalTimes, setOptimalTimes] = useState<any[]>([]);
+  const [channelData, setChannelData] = useState<ChannelData | null>(null);
+  const [videos, setVideos] = useState<VideoData[]>([]);
+  const [optimalTimes, setOptimalTimes] = useState<OptimalTime[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const handleFetchData = async () => {
@@ -39,8 +68,9 @@ export default function APITestPage() {
       console.log('Channel:', channel);
       console.log('Videos:', videoList);
       console.log('Optimal Times:', optimal);
-    } catch (err: any) {
-      setError(err.message || 'データの取得に失敗しました');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'データの取得に失敗しました';
+      setError(errorMessage);
       console.error(err);
     } finally {
       setLoading(false);

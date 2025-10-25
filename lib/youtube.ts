@@ -2,6 +2,42 @@
  * YouTube Data API v3 ユーティリティ関数
  */
 
+interface YouTubeVideoSnippet {
+  id: { videoId: string };
+  snippet: {
+    title: string;
+    publishedAt: string;
+    thumbnails: {
+      medium: { url: string };
+      high: { url: string };
+      default: { url: string };
+    };
+    description: string;
+  };
+}
+
+interface YouTubeVideoDetails {
+  id: string;
+  snippet: {
+    title: string;
+    publishedAt: string;
+    thumbnails: {
+      medium: { url: string };
+      high: { url: string };
+      default: { url: string };
+    };
+    description: string;
+  };
+  statistics: {
+    viewCount: string;
+    likeCount?: string;
+    commentCount?: string;
+  };
+  contentDetails?: {
+    duration: string;
+  };
+}
+
 const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
 const YOUTUBE_API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
 
@@ -61,7 +97,7 @@ export async function getChannelVideos(channelId: string, maxResults: number = 5
     }
 
     // 各動画の詳細情報を取得
-    const videoIds = data.items.map((item: any) => item.id.videoId).join(',');
+    const videoIds = data.items.map((item: YouTubeVideoSnippet) => item.id.videoId).join(',');
     const detailsResponse = await fetch(
       `${YOUTUBE_API_BASE_URL}/videos?part=statistics,snippet&id=${videoIds}&key=${YOUTUBE_API_KEY}`
     );
@@ -72,20 +108,20 @@ export async function getChannelVideos(channelId: string, maxResults: number = 5
 
     const detailsData = await detailsResponse.json();
 
-    return detailsData.items.map((video: any) => ({
+    return detailsData.items.map((video: YouTubeVideoDetails) => ({
       id: video.id,
       title: video.snippet.title,
       thumbnail: video.snippet.thumbnails.medium.url,
       publishedAt: new Date(video.snippet.publishedAt).toLocaleString('ja-JP'),
-      viewCount: parseInt(video.statistics.viewCount || 0),
-      likeCount: parseInt(video.statistics.likeCount || 0),
-      commentCount: parseInt(video.statistics.commentCount || 0),
+      viewCount: parseInt(video.statistics.viewCount || '0'),
+      likeCount: parseInt(video.statistics.likeCount || '0'),
+      commentCount: parseInt(video.statistics.commentCount || '0'),
       // エンゲージメント率 = (いいね数 + コメント数) / 視聴回数 * 100
-      engagementRate: video.statistics.viewCount > 0
+      engagementRate: parseInt(video.statistics.viewCount || '0') > 0
         ? parseFloat(
             (
-              ((parseInt(video.statistics.likeCount || 0) + parseInt(video.statistics.commentCount || 0)) /
-                parseInt(video.statistics.viewCount)) *
+              ((parseInt(video.statistics.likeCount || '0') + parseInt(video.statistics.commentCount || '0')) /
+                parseInt(video.statistics.viewCount || '0')) *
               100
             ).toFixed(1)
           )
@@ -124,15 +160,15 @@ export async function getVideoDetails(videoId: string) {
       description: video.snippet.description,
       thumbnail: video.snippet.thumbnails.high.url,
       publishedAt: new Date(video.snippet.publishedAt),
-      viewCount: parseInt(video.statistics.viewCount || 0),
-      likeCount: parseInt(video.statistics.likeCount || 0),
-      commentCount: parseInt(video.statistics.commentCount || 0),
-      duration: video.contentDetails.duration,
-      engagementRate: video.statistics.viewCount > 0
+      viewCount: parseInt(video.statistics.viewCount || '0'),
+      likeCount: parseInt(video.statistics.likeCount || '0'),
+      commentCount: parseInt(video.statistics.commentCount || '0'),
+      duration: video.contentDetails?.duration || '',
+      engagementRate: parseInt(video.statistics.viewCount || '0') > 0
         ? parseFloat(
             (
-              ((parseInt(video.statistics.likeCount || 0) + parseInt(video.statistics.commentCount || 0)) /
-                parseInt(video.statistics.viewCount)) *
+              ((parseInt(video.statistics.likeCount || '0') + parseInt(video.statistics.commentCount || '0')) /
+                parseInt(video.statistics.viewCount || '0')) *
               100
             ).toFixed(1)
           )
@@ -144,11 +180,17 @@ export async function getVideoDetails(videoId: string) {
   }
 }
 
+interface VideoAnalysisData {
+  publishedAt: string;
+  viewCount: number;
+  engagementRate: number;
+}
+
 /**
  * 投稿時間の最適化分析
  * （実際のAI分析機能は別途実装が必要）
  */
-export function analyzeOptimalPostTimes(videos: any[]) {
+export function analyzeOptimalPostTimes(videos: VideoAnalysisData[]) {
   // 動画を曜日と時間帯でグループ化
   const timeSlots: { [key: string]: { views: number; engagement: number; count: number } } = {};
 
@@ -188,7 +230,7 @@ export function analyzeOptimalPostTimes(videos: any[]) {
 /**
  * ヒートマップデータを生成
  */
-export function generateHeatmapFromVideos(videos: any[]) {
+export function generateHeatmapFromVideos(videos: VideoAnalysisData[]) {
   const heatmap: { [key: string]: number } = {};
 
   // 初期化
