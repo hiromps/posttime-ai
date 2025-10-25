@@ -265,7 +265,36 @@ export function generateHeatmapFromVideos(videos: VideoAnalysisData[]) {
 }
 
 /**
- * チャンネルIDをユーザー名から取得
+ * チャンネルIDをハンドル名(@username)から取得
+ */
+export async function getChannelIdByHandle(handle: string) {
+  try {
+    // @を除去
+    const cleanHandle = handle.startsWith('@') ? handle.substring(1) : handle;
+
+    const response = await fetch(
+      `${YOUTUBE_API_BASE_URL}/channels?part=id&forHandle=${cleanHandle}&key=${YOUTUBE_API_KEY}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`YouTube API Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.items || data.items.length === 0) {
+      throw new Error('Channel not found');
+    }
+
+    return data.items[0].id;
+  } catch (error) {
+    console.error('Error fetching channel ID by handle:', error);
+    throw error;
+  }
+}
+
+/**
+ * チャンネルIDをユーザー名から取得（レガシー形式）
  */
 export async function getChannelIdByUsername(username: string) {
   try {
@@ -287,5 +316,55 @@ export async function getChannelIdByUsername(username: string) {
   } catch (error) {
     console.error('Error fetching channel ID:', error);
     throw error;
+  }
+}
+
+/**
+ * 様々な形式のチャンネル識別子からチャンネルIDを取得
+ * @param input - チャンネルID、@ハンドル、URL、カスタムURLなど
+ */
+export async function resolveChannelId(input: string): Promise<string> {
+  try {
+    // URLから抽出
+    let identifier = input.trim();
+
+    // YouTube URLの場合、識別子を抽出
+    if (identifier.includes('youtube.com/')) {
+      const urlMatch = identifier.match(/youtube\.com\/@([^/?]+)/);
+      if (urlMatch) {
+        identifier = '@' + urlMatch[1];
+      } else {
+        const channelMatch = identifier.match(/youtube\.com\/channel\/([^/?]+)/);
+        if (channelMatch) {
+          // すでにチャンネルIDの形式
+          return channelMatch[1];
+        }
+        const customMatch = identifier.match(/youtube\.com\/c\/([^/?]+)/);
+        if (customMatch) {
+          identifier = customMatch[1];
+        }
+      }
+    }
+
+    // @ハンドル形式の場合
+    if (identifier.startsWith('@')) {
+      return await getChannelIdByHandle(identifier);
+    }
+
+    // UCで始まる場合、すでにチャンネルID
+    if (identifier.startsWith('UC')) {
+      return identifier;
+    }
+
+    // カスタムURLの場合
+    try {
+      return await getChannelIdByUsername(identifier);
+    } catch (error) {
+      // ユーザー名でも見つからない場合はハンドルとして試行
+      return await getChannelIdByHandle(identifier);
+    }
+  } catch (error) {
+    console.error('Error resolving channel ID:', error);
+    throw new Error('チャンネルが見つかりませんでした。正しいチャンネルID、@ハンドル、またはURLを入力してください。');
   }
 }
