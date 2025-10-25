@@ -140,6 +140,57 @@ const videos = await getChannelVideos('UCxxxxxxxxxxxxxx', 50);
 const optimalTimes = analyzeOptimalPostTimes(videos);
 ```
 
+## 🗄️ Supabase データベース統合（NEW!）
+
+### 実装済み機能
+
+PostTime-AIはSupabaseをバックエンドデータベースとして使用しています。
+
+#### データベーステーブル
+- ✅ `users` - ユーザー情報管理
+- ✅ `youtube_channels` - YouTubeチャンネルデータ
+- ✅ `youtube_videos` - 動画統計データ
+- ✅ `optimal_post_times` - AI分析結果の保存
+
+#### セキュリティ機能
+- ✅ Row Level Security (RLS) 有効化
+- ✅ ユーザーごとのデータ分離
+- ✅ 自動タイムスタンプ管理
+- ✅ インデックス最適化
+
+#### 利用可能な関数
+
+```typescript
+import {
+  saveYouTubeChannel,
+  getTopOptimalPostTimes,
+  getChannelStats
+} from '@/lib/supabase-helpers';
+
+// チャンネルデータを保存
+await saveYouTubeChannel({
+  user_id: 'uuid',
+  channel_id: 'UCxxxxxx',
+  channel_name: 'サンプルチャンネル',
+  ...
+});
+
+// 最適投稿時間TOP3を取得
+const times = await getTopOptimalPostTimes('channel-uuid', 3);
+
+// チャンネル統計を取得
+const stats = await getChannelStats('channel-uuid');
+```
+
+#### セットアップ
+
+詳細な手順は [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) を参照してください。
+
+1. Supabaseプロジェクトを作成
+2. `supabase/schema.sql` を実行
+3. 環境変数を `.env.local` に設定
+4. アプリケーションを起動
+
 ## 🎨 デザインガイドライン
 
 ### カラーパレット
@@ -183,6 +234,10 @@ npm run build
 # YouTube Data API（実装済み✅）
 NEXT_PUBLIC_YOUTUBE_API_KEY=your_youtube_api_key_here
 
+# Supabase（実装済み✅）
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url_here
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+
 # Instagram API（近日対応）
 # NEXT_PUBLIC_INSTAGRAM_APP_ID=your_app_id_here
 # NEXT_PUBLIC_INSTAGRAM_APP_SECRET=your_app_secret_here
@@ -196,12 +251,9 @@ NEXT_PUBLIC_YOUTUBE_API_KEY=your_youtube_api_key_here
 # NEXT_PUBLIC_TIKTOK_CLIENT_SECRET=your_client_secret_here
 ```
 
-**YouTube Data API キーの取得方法:**
-1. [Google Cloud Console](https://console.cloud.google.com/)にアクセス
-2. プロジェクトを作成
-3. YouTube Data API v3を有効化
-4. 認証情報でAPIキーを作成
-5. `.env.local`に追加
+**セットアップガイド:**
+- **YouTube API**: [Google Cloud Console](https://console.cloud.google.com/)でAPIキーを取得
+- **Supabase**: [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) を参照してデータベースを設定
 
 ## 🎯 料金プラン
 
