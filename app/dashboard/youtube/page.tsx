@@ -44,7 +44,7 @@ import {
   Cell,
   Legend
 } from 'recharts';
-import { getChannelInfo, getChannelVideos, analyzeOptimalPostTimes, generateHeatmapFromVideos } from '@/lib/youtube';
+import { getChannelInfo, getChannelVideos, analyzeOptimalPostTimes, generateHeatmapFromVideos, getTrendingShortsMusic } from '@/lib/youtube';
 import { getCurrentUser, signOut } from '@/lib/auth';
 
 interface VideoData {
@@ -95,6 +95,20 @@ export default function YouTubeDashboardPage() {
     engagementGrowth: 0
   });
 
+  // トレンドBGM
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [trendingMusic, setTrendingMusic] = useState<{
+    videoId: string;
+    musicName: string;
+    videoTitle: string;
+    thumbnail: string;
+    channelName: string;
+    viewCount: number;
+    likeCount: number;
+  }[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [musicLoading, setMusicLoading] = useState(false);
+
   // チャンネルデータを取得
   const fetchChannelData = async (channelId: string) => {
     setLoading(true);
@@ -104,7 +118,7 @@ export default function YouTubeDashboardPage() {
       setChannelData(channel);
 
       // 動画一覧取得（最大50件）
-      const videoList = await getChannelVideos(channelId, 50);
+      const videoList: VideoData[] = await getChannelVideos(channelId, 50);
       setVideos(videoList);
 
       // 最適投稿時間分析
@@ -121,9 +135,9 @@ export default function YouTubeDashboardPage() {
 
       // 動画パフォーマンスTOP10
       const topVideos = videoList
-        .sort((a, b) => b.viewCount - a.viewCount)
+        .sort((a: VideoData, b: VideoData) => b.viewCount - a.viewCount)
         .slice(0, 10)
-        .map(v => ({
+        .map((v: VideoData) => ({
           title: v.title.length > 30 ? v.title.substring(0, 30) + '...' : v.title,
           views: v.viewCount,
           engagement: v.engagementRate
@@ -152,7 +166,7 @@ export default function YouTubeDashboardPage() {
       .sort((a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime())
       .slice(-30); // 最新30件
 
-    return sortedVideos.map(v => ({
+    return sortedVideos.map((v: VideoData) => ({
       date: new Date(v.publishedAt).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' }),
       engagement: v.engagementRate,
       views: Math.round(v.viewCount / 1000) // 千単位に変換
@@ -268,9 +282,24 @@ export default function YouTubeDashboardPage() {
       } else {
         router.push('/dashboard');
       }
+      // トレンドBGMを取得
+      fetchTrendingMusic();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user, router]);
+
+  // トレンドBGMを取得
+  const fetchTrendingMusic = async () => {
+    setMusicLoading(true);
+    try {
+      const music = await getTrendingShortsMusic(20);
+      setTrendingMusic(music);
+    } catch (error) {
+      console.error('Error fetching trending music:', error);
+    } finally {
+      setMusicLoading(false);
+    }
+  };
 
   // ログアウト処理
   const handleLogout = async () => {
@@ -607,7 +636,7 @@ export default function YouTubeDashboardPage() {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={(props: any) => `${props.name} ${(props.percent * 100).toFixed(0)}%`} // eslint-disable-line @typescript-eslint/no-explicit-any
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"

@@ -368,3 +368,142 @@ export async function resolveChannelId(input: string): Promise<string> {
     throw new Error('チャンネルが見つかりませんでした。正しいチャンネルID、@ハンドル、またはURLを入力してください。');
   }
 }
+
+/**
+ * トレンドのShorts BGMを取得
+ * 人気のShorts動画（日本のトレンド）から音楽情報を抽出
+ */
+export async function getTrendingShortsMusic(maxResults: number = 20) {
+  try {
+    // 日本のトレンド動画（Shorts）を取得
+    const response = await fetch(
+      `${YOUTUBE_API_BASE_URL}/videos?part=snippet,statistics,contentDetails&chart=mostPopular&regionCode=JP&videoCategoryId=10&maxResults=${maxResults}&key=${YOUTUBE_API_KEY}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`YouTube API Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.items) {
+      return [];
+    }
+
+    // Shorts動画のみをフィルタリング（60秒以下）
+    const shortsVideos = data.items.filter((video: {contentDetails?: {duration: string}}) => {
+      if (!video.contentDetails?.duration) return false;
+
+      // ISO 8601 duration形式をパース (例: PT59S = 59秒)
+      const duration = video.contentDetails.duration;
+      const match = duration.match(/PT(?:(\d+)M)?(?:(\d+)S)?/);
+      if (!match) return false;
+
+      const minutes = parseInt(match[1] || '0');
+      const seconds = parseInt(match[2] || '0');
+      const totalSeconds = minutes * 60 + seconds;
+
+      return totalSeconds <= 60; // 60秒以下
+    });
+
+    // 音楽情報を抽出（タイトルや説明から）
+    const musicData = shortsVideos.map((video: {
+      id: string;
+      snippet: {
+        title: string;
+        description: string;
+        thumbnails: {high: {url: string}};
+        channelTitle: string;
+      };
+      statistics: {
+        viewCount: string;
+        likeCount?: string;
+      };
+    }) => {
+      // タイトルから音楽名を推測（"【音楽名】"や"♪音楽名"などのパターン）
+      const musicMatch = video.snippet.title.match(/[【「](.+?)[】」]|♪(.+?)[\s-]|Music:\s*(.+?)[\s-]|BGM:\s*(.+?)[\s-]/i);
+      const musicName = musicMatch ? (musicMatch[1] || musicMatch[2] || musicMatch[3] || musicMatch[4]) : video.snippet.title;
+
+      // 説明文から音楽情報を抽出
+      const descriptionMusicMatch = video.snippet.description.match(/Music:\s*(.+?)(\n|$)|BGM:\s*(.+?)(\n|$)|曲名:\s*(.+?)(\n|$)/i);
+      const descriptionMusic = descriptionMusicMatch ? (descriptionMusicMatch[1] || descriptionMusicMatch[3] || descriptionMusicMatch[5]) : null;
+
+      return {
+        videoId: video.id,
+        musicName: descriptionMusic || musicName.substring(0, 50), // 最大50文字
+        videoTitle: video.snippet.title,
+        thumbnail: video.snippet.thumbnails.high.url,
+        channelName: video.snippet.channelTitle,
+        viewCount: parseInt(video.statistics.viewCount || '0'),
+        likeCount: parseInt(video.statistics.likeCount || '0'),
+        popularity: parseInt(video.statistics.viewCount || '0') + parseInt(video.statistics.likeCount || '0') * 10
+      };
+    });
+
+    // 人気度でソート
+    const sortedMusic = musicData.sort((a: {popularity: number}, b: {popularity: number}) => b.popularity - a.popularity);
+
+    // 重複する音楽名を除外（簡易的に最初の15文字で判定）
+    const uniqueMusic: typeof musicData = [];
+    const seenMusic = new Set<string>();
+
+    for (const music of sortedMusic) {
+      const musicKey = music.musicName.substring(0, 15).toLowerCase();
+      if (!seenMusic.has(musicKey)) {
+        seenMusic.add(musicKey);
+        uniqueMusic.push(music);
+      }
+    }
+
+    return uniqueMusic.slice(0, 10); // TOP10を返す
+  } catch (error) {
+    console.error('Error fetching trending shorts music:', error);
+    throw error;
+  }
+}
+
+/**
+ * 人気のMusic動画（日本のトレンド）を取得
+ */
+export async function getTrendingMusicVideos(maxResults: number = 20) {
+  try {
+    // 日本のトレンド動画（音楽カテゴリー）を取得
+    const response = await fetch(
+      `${YOUTUBE_API_BASE_URL}/videos?part=snippet,statistics&chart=mostPopular&regionCode=JP&videoCategoryId=10&maxResults=${maxResults}&key=${YOUTUBE_API_KEY}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`YouTube API Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.items) {
+      return [];
+    }
+
+    return data.items.map((video: {
+      id: string;
+      snippet: {
+        title: string;
+        thumbnails: {high: {url: string}};
+        channelTitle: string;
+      };
+      statistics: {
+        viewCount: string;
+        likeCount?: string;
+      };
+    }, index: number) => ({
+      rank: index + 1,
+      videoId: video.id,
+      title: video.snippet.title,
+      thumbnail: video.snippet.thumbnails.high.url,
+      channelName: video.snippet.channelTitle,
+      viewCount: parseInt(video.statistics.viewCount || '0'),
+      likeCount: parseInt(video.statistics.likeCount || '0')
+    }));
+  } catch (error) {
+    console.error('Error fetching trending music videos:', error);
+    throw error;
+  }
+}
