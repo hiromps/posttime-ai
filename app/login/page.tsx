@@ -8,28 +8,53 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { TrendingUp, Mail, Lock } from 'lucide-react';
+import { signIn, signInWithGoogle } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
 
-  const handleGoogleLogin = () => {
-    // Google OAuth処理のプレースホルダー
-    setIsLoading(true);
-    setTimeout(() => {
-      router.push('/dashboard');
-    }, 1000);
+  const handleGoogleLogin = async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+      await signInWithGoogle();
+      // OAuth認証の場合、リダイレクトが自動的に処理される
+    } catch (err) {
+      console.error('Google login error:', err);
+      setError('Googleログインに失敗しました。もう一度お試しください。');
+      setIsLoading(false);
+    }
   };
 
-  const handleEmailLogin = (e: React.FormEvent) => {
+  const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // メールログイン処理のプレースホルダー
-    setIsLoading(true);
-    setTimeout(() => {
-      router.push('/dashboard');
-    }, 1000);
+    try {
+      setIsLoading(true);
+      setError('');
+
+      if (isSignUp) {
+        // 新規登録
+        const { signUp } = await import('@/lib/auth');
+        await signUp(email, password);
+        alert('確認メールを送信しました。メールを確認して登録を完了してください。');
+        setIsSignUp(false);
+      } else {
+        // ログイン
+        await signIn(email, password);
+        router.push('/dashboard');
+      }
+    } catch (err: any) {
+      console.error('Auth error:', err);
+      const errorMessage = err.message || '認証に失敗しました。';
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -104,9 +129,16 @@ export default function LoginPage() {
         >
           <Card className="shadow-2xl">
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-2">ログイン</h2>
-              <p className="text-gray-600">アカウントにアクセス</p>
+              <h2 className="text-3xl font-bold mb-2">{isSignUp ? '新規登録' : 'ログイン'}</h2>
+              <p className="text-gray-600">{isSignUp ? 'アカウントを作成' : 'アカウントにアクセス'}</p>
             </div>
+
+            {/* エラーメッセージ */}
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                {error}
+              </div>
+            )}
 
             {/* Google ログインボタン */}
             <Button
@@ -197,16 +229,36 @@ export default function LoginPage() {
                 fullWidth
                 disabled={isLoading}
               >
-                {isLoading ? 'ログイン中...' : 'ログイン'}
+                {isLoading
+                  ? (isSignUp ? '登録中...' : 'ログイン中...')
+                  : (isSignUp ? 'アカウント作成' : 'ログイン')
+                }
               </Button>
             </form>
 
             <div className="mt-6 text-center">
               <p className="text-gray-600 text-sm">
-                アカウントをお持ちでない方は{' '}
-                <a href="#" className="text-purple-600 hover:text-purple-700 font-semibold">
-                  新規登録
-                </a>
+                {isSignUp ? (
+                  <>
+                    すでにアカウントをお持ちの方は{' '}
+                    <button
+                      onClick={() => setIsSignUp(false)}
+                      className="text-purple-600 hover:text-purple-700 font-semibold"
+                    >
+                      ログイン
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    アカウントをお持ちでない方は{' '}
+                    <button
+                      onClick={() => setIsSignUp(true)}
+                      className="text-purple-600 hover:text-purple-700 font-semibold"
+                    >
+                      新規登録
+                    </button>
+                  </>
+                )}
               </p>
             </div>
           </Card>

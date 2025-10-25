@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
-import { getChannelInfo, getChannelVideos, analyzeOptimalPostTimes } from '@/lib/youtube';
+import { getChannelInfo, getChannelVideos, analyzeOptimalPostTimes, resolveChannelId } from '@/lib/youtube';
 
 interface ChannelData {
   channelId: string;
@@ -45,7 +45,7 @@ export default function APITestPage() {
 
   const handleFetchData = async () => {
     if (!channelId) {
-      setError('チャンネルIDを入力してください');
+      setError('チャンネル情報を入力してください');
       return;
     }
 
@@ -53,12 +53,16 @@ export default function APITestPage() {
     setError(null);
 
     try {
+      // チャンネルIDを解決（@ハンドル、URL、IDなどに対応）
+      const resolvedChannelId = await resolveChannelId(channelId);
+      console.log('Resolved Channel ID:', resolvedChannelId);
+
       // チャンネル情報を取得
-      const channel = await getChannelInfo(channelId);
+      const channel = await getChannelInfo(resolvedChannelId);
       setChannelData(channel);
 
       // 動画一覧を取得
-      const videoList = await getChannelVideos(channelId, 50);
+      const videoList = await getChannelVideos(resolvedChannelId, 50);
       setVideos(videoList);
 
       // 最適投稿時間を分析
@@ -85,11 +89,11 @@ export default function APITestPage() {
         <h1 className="text-4xl font-bold mb-8 gradient-text">YouTube API テスト</h1>
 
         <Card className="mb-8">
-          <h2 className="text-xl font-bold mb-4">チャンネルID入力</h2>
+          <h2 className="text-xl font-bold mb-4">チャンネル情報入力</h2>
           <div className="flex gap-4">
             <Input
               type="text"
-              placeholder="チャンネルID (例: UCxxxxxxxxxxxxxx)"
+              placeholder="@チャンネル名、URL、またはチャンネルID"
               value={channelId}
               onChange={(e) => setChannelId(e.target.value)}
             />
@@ -98,7 +102,10 @@ export default function APITestPage() {
             </Button>
           </div>
           <p className="text-sm text-gray-600 mt-2">
-            ※ YouTubeチャンネルページのURLから取得できます（例: youtube.com/channel/UCxxxxxxxxxxxxxx）
+            ※ 以下の形式で入力できます：<br />
+            • @チャンネル名（例: @Galaxy0324）<br />
+            • YouTube URL（例: https://www.youtube.com/@Galaxy0324）<br />
+            • チャンネルID（例: UCxxxxxxxxxxxxxx）
           </p>
         </Card>
 
@@ -165,11 +172,19 @@ export default function APITestPage() {
         <div className="mt-8 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
           <h3 className="font-bold mb-2">💡 使い方のヒント</h3>
           <ul className="text-sm space-y-1 text-gray-700">
-            <li>1. YouTubeチャンネルIDを入力してください</li>
+            <li>1. YouTubeチャンネルの@ハンドル名、URL、またはIDを入力</li>
             <li>2. 「データ取得」ボタンをクリック</li>
             <li>3. チャンネル情報と最適投稿時間が表示されます</li>
             <li>4. ブラウザのコンソールで詳細データを確認できます（F12キー）</li>
           </ul>
+          <div className="mt-3 pt-3 border-t border-yellow-300">
+            <p className="text-xs text-gray-600">
+              <strong>入力例：</strong><br />
+              • @Galaxy0324<br />
+              • https://www.youtube.com/@Galaxy0324<br />
+              • UCxxxxxxxxxxxxxx（チャンネルID）
+            </p>
+          </div>
         </div>
       </div>
     </div>

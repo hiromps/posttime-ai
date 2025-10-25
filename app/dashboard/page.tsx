@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { Card } from '@/components/ui/Card';
@@ -21,7 +22,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  RefreshCw
+  RefreshCw,
+  LogOut
 } from 'lucide-react';
 import {
   LineChart,
@@ -33,19 +35,17 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { getChannelInfo, getChannelVideos, analyzeOptimalPostTimes, generateHeatmapFromVideos, resolveChannelId } from '@/lib/youtube';
-
-// デモユーザー（将来的にSupabase Authに置き換え）
-const demoUser = {
-  id: '1',
-  name: 'ゲストユーザー',
-  email: 'guest@posttime-ai.com',
-  plan: 'free' as const
-};
+import { getCurrentUser, signOut } from '@/lib/auth';
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const videosPerPage = 5;
+
+  // 認証状態管理
+  const [user, setUser] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   // データ状態管理
   const [channelId, setChannelId] = useState('');
@@ -114,14 +114,60 @@ export default function DashboardPage() {
     }
   };
 
+  // 認証チェック
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        if (!currentUser) {
+          router.push('/login');
+          return;
+        }
+        setUser(currentUser);
+      } catch (error) {
+        console.error('Auth check error:', error);
+        router.push('/login');
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [router]);
+
   // 初回ロード時に前回のチャンネル情報を読み込み
   useEffect(() => {
-    const lastChannelInput = localStorage.getItem('lastChannelInput');
-    if (lastChannelInput) {
-      setChannelId(lastChannelInput);
-      fetchChannelData(lastChannelInput);
+    if (!authLoading && user) {
+      const lastChannelInput = localStorage.getItem('lastChannelInput');
+      if (lastChannelInput) {
+        setChannelId(lastChannelInput);
+        fetchChannelData(lastChannelInput);
+      }
     }
-  }, []);
+  }, [authLoading, user]);
+
+  // ログアウト処理
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      alert('ログアウトに失敗しました');
+    }
+  };
+
+  // 認証読み込み中
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-700">読み込み中...</h2>
+        </div>
+      </div>
+    );
+  }
 
   // パフォーマンスグラフデータ生成
   const generatePerformanceGraph = (videoList: any[]) => {
@@ -204,13 +250,32 @@ export default function DashboardPage() {
                   <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                 </button>
 
-                <button className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100">
-                  <div className="w-8 h-8 bg-purple-200 rounded-full flex items-center justify-center text-purple-700 font-bold text-sm">
-                    {demoUser.name.charAt(0)}
+                <div className="relative group">
+                  <button className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100">
+                    <div className="w-8 h-8 bg-purple-200 rounded-full flex items-center justify-center text-purple-700 font-bold text-sm">
+                      {user?.email?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                    <span className="hidden sm:block font-medium text-gray-700">
+                      {user?.email?.split('@')[0] || 'ユーザー'}
+                    </span>
+                    <ChevronDown className="w-4 h-4 text-gray-600" />
+                  </button>
+
+                  {/* ドロップダウンメニュー */}
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                    <div className="p-3 border-b border-gray-100">
+                      <p className="text-sm font-semibold text-gray-900">{user?.email}</p>
+                      <p className="text-xs text-gray-500 mt-1">無料プラン</p>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>ログアウト</span>
+                    </button>
                   </div>
-                  <span className="hidden sm:block font-medium text-gray-700">{demoUser.name}</span>
-                  <ChevronDown className="w-4 h-4 text-gray-600" />
-                </button>
+                </div>
               </div>
             </div>
           </div>
