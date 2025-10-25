@@ -9,6 +9,12 @@ const API_BASE = 'https://www.googleapis.com/youtube/v3';
 // デバッグモード
 const DEBUG = true;
 
+// APIキーの存在確認
+if (!API_KEY) {
+  console.error('⚠️ YouTube APIキーが設定されていません！');
+  console.error('.env.local に NEXT_PUBLIC_YOUTUBE_API_KEY を設定してください。');
+}
+
 /**
  * APIリクエストのラッパー関数（デバッグ情報付き）
  */
@@ -57,13 +63,41 @@ async function apiRequest(endpoint: string, params: Record<string, string>) {
       // エラーメッセージを詳細化
       if (response.status === 403) {
         const errorMessage = data.error?.message || 'Access forbidden';
+        const errorDetails = data.error?.errors?.[0];
+
+        console.error('🚨 403 Error Details:', {
+          message: errorMessage,
+          reason: errorDetails?.reason,
+          domain: errorDetails?.domain,
+          currentURL: window.location.href,
+          origin: window.location.origin
+        });
+
         if (errorMessage.includes('referer')) {
           throw new Error(
-            `APIキーのHTTPリファラー制限エラー: ${errorMessage}\n` +
-            `現在のオリジン: ${window.location.origin}\n` +
-            `Google Cloud ConsoleでこのURLを許可してください。`
+            `❌ HTTPリファラー制限エラー\n\n` +
+            `エラー: ${errorMessage}\n\n` +
+            `解決方法:\n` +
+            `1. Google Cloud Console (https://console.cloud.google.com) にアクセス\n` +
+            `2. APIキーの設定を開く\n` +
+            `3. HTTPリファラー制限に以下を追加:\n` +
+            `   • ${window.location.origin}/*\n` +
+            `   • ${window.location.origin}\n\n` +
+            `4. 保存して1-2分待つ`
           );
         }
+
+        if (errorMessage.includes('API key not valid')) {
+          throw new Error(
+            `❌ APIキーが無効です\n\n` +
+            `エラー: ${errorMessage}\n\n` +
+            `確認事項:\n` +
+            `1. APIキーが正しくコピーされているか\n` +
+            `2. YouTube Data API v3 が有効になっているか\n` +
+            `3. APIキーに正しい制限が設定されているか`
+          );
+        }
+
         throw new Error(`API アクセス拒否 (403): ${errorMessage}`);
       }
 
