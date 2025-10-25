@@ -359,7 +359,7 @@ export async function resolveChannelId(input: string): Promise<string> {
     // カスタムURLの場合
     try {
       return await getChannelIdByUsername(identifier);
-    } catch (error) {
+    } catch {
       // ユーザー名でも見つからない場合はハンドルとして試行
       return await getChannelIdByHandle(identifier);
     }

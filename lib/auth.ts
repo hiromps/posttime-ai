@@ -89,6 +89,6 @@ export async function getSession() {
 /**
  * 認証状態の変更を監視
  */
-export function onAuthStateChange(callback: (event: string, session: any) => void) {
+export function onAuthStateChange(callback: (event: string, session: {user: {email?: string}} | null) => void) {
   return supabase.auth.onAuthStateChange(callback);
 }

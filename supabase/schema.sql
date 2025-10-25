@@ -9,6 +9,10 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
   avatar_url TEXT,
+  bio TEXT,
+  website TEXT,
+  twitter TEXT,
+  youtube TEXT,
   plan TEXT DEFAULT 'free' CHECK (plan IN ('free', 'pro', 'business')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

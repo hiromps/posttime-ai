@@ -48,9 +48,9 @@ export default function LoginPage() {
         await signIn(email, password);
         router.push('/dashboard');
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Auth error:', err);
-      const errorMessage = err.message || '認証に失敗しました。';
+      const errorMessage = err instanceof Error ? err.message : '認証に失敗しました。';
       setError(errorMessage);
     } finally {
       setIsLoading(false);

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { Card } from '@/components/ui/Card';
@@ -23,7 +24,8 @@ import {
   ChevronRight,
   Plus,
   RefreshCw,
-  LogOut
+  LogOut,
+  Settings
 } from 'lucide-react';
 import {
   LineChart,
@@ -44,17 +46,17 @@ export default function DashboardPage() {
   const videosPerPage = 5;
 
   // 認証状態管理
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{email?: string} | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   // データ状態管理
   const [channelId, setChannelId] = useState('');
   const [loading, setLoading] = useState(false);
-  const [channelData, setChannelData] = useState<any>(null);
-  const [videos, setVideos] = useState<any[]>([]);
-  const [optimalTimes, setOptimalTimes] = useState<any[]>([]);
-  const [heatmapData, setHeatmapData] = useState<any[]>([]);
-  const [performanceData, setPerformanceData] = useState<any[]>([]);
+  const [channelData, setChannelData] = useState<{channelName: string; subscriberCount: number} | null>(null);
+  const [videos, setVideos] = useState<{id: string; title: string; thumbnail: string; publishedAt: string; viewCount: number; engagementRate: number}[]>([]);
+  const [optimalTimes, setOptimalTimes] = useState<{dayOfWeek: number; hour: number; averageViews: number; averageEngagement: number; sampleSize: number}[]>([]);
+  const [heatmapData, setHeatmapData] = useState<{day: number; hour: number; value: number}[]>([]);
+  const [performanceData, setPerformanceData] = useState<{date: string; views: number; engagement: number}[]>([]);
   const [stats, setStats] = useState({
     totalVideos: 0,
     totalViews: 0,
@@ -144,6 +146,7 @@ export default function DashboardPage() {
         fetchChannelData(lastChannelInput);
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user]);
 
   // ログアウト処理
@@ -170,13 +173,13 @@ export default function DashboardPage() {
   }
 
   // パフォーマンスグラフデータ生成
-  const generatePerformanceGraph = (videoList: any[]) => {
+  const generatePerformanceGraph = (videoList: {publishedAt: string; viewCount: number; engagementRate: number}[]) => {
     // 動画を日付でグループ化して過去30日分のデータを作成
     const sortedVideos = [...videoList].sort((a, b) =>
       new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime()
     );
 
-    const graphData: any[] = [];
+    const graphData: {date: string; views: number; engagement: number}[] = [];
     const today = new Date();
 
     for (let i = 29; i >= 0; i--) {
@@ -267,9 +270,16 @@ export default function DashboardPage() {
                       <p className="text-sm font-semibold text-gray-900">{user?.email}</p>
                       <p className="text-xs text-gray-500 mt-1">無料プラン</p>
                     </div>
+                    <Link
+                      href="/profile"
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2 block"
+                    >
+                      <Settings className="w-4 h-4" />
+                      <span>プロフィール設定</span>
+                    </Link>
                     <button
                       onClick={handleLogout}
-                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2 rounded-b-lg"
                     >
                       <LogOut className="w-4 h-4" />
                       <span>ログアウト</span>
@@ -650,6 +660,7 @@ export default function DashboardPage() {
                             <tr key={video.id} className="border-b border-gray-100 hover:bg-gray-50">
                               <td className="py-3 px-4">
                                 <div className="flex items-center space-x-3">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img
                                     src={video.thumbnail}
                                     alt={video.title}
