@@ -98,6 +98,48 @@ yarn dev
 http://localhost:3000
 ```
 
+## 🔌 YouTube API統合（NEW!）
+
+### 実装済み機能
+
+PostTime-AIは実際のYouTube Data API v3と統合されています。
+
+#### 利用可能な機能
+- ✅ チャンネル情報の取得（登録者数、総視聴回数など）
+- ✅ 動画一覧の取得（最大50件）
+- ✅ 動画統計の取得（視聴回数、いいね数、コメント数）
+- ✅ エンゲージメント率の自動計算
+- ✅ 最適投稿時間のAI分析
+- ✅ ヒートマップデータの生成
+
+#### APIテストページ
+
+開発サーバーを起動後、以下のURLでAPIテスト機能を利用できます：
+
+```
+http://localhost:3000/api-test
+```
+
+**使い方:**
+1. YouTubeチャンネルIDを入力
+2. 「データ取得」ボタンをクリック
+3. リアルタイムでチャンネル情報と最適投稿時間が表示されます
+
+#### API関数の使用例
+
+```typescript
+import { getChannelInfo, getChannelVideos, analyzeOptimalPostTimes } from '@/lib/youtube';
+
+// チャンネル情報を取得
+const channel = await getChannelInfo('UCxxxxxxxxxxxxxx');
+
+// 動画一覧を取得
+const videos = await getChannelVideos('UCxxxxxxxxxxxxxx', 50);
+
+// 最適投稿時間を分析
+const optimalTimes = analyzeOptimalPostTimes(videos);
+```
+
 ## 🎨 デザインガイドライン
 
 ### カラーパレット
@@ -133,26 +175,33 @@ npm run build
 - **ビルド出力ディレクトリ:** `out`
 - **Node.jsバージョン:** 18.x
 
-### 環境変数（将来的な実装用）
+### 環境変数設定
+
+プロジェクトルートに `.env.local` ファイルを作成してください：
 
 ```env
-# YouTube Data API
-YOUTUBE_API_KEY=your_api_key_here
-YOUTUBE_CLIENT_ID=your_client_id_here
-YOUTUBE_CLIENT_SECRET=your_client_secret_here
+# YouTube Data API（実装済み✅）
+NEXT_PUBLIC_YOUTUBE_API_KEY=your_youtube_api_key_here
 
 # Instagram API（近日対応）
-INSTAGRAM_APP_ID=your_app_id_here
-INSTAGRAM_APP_SECRET=your_app_secret_here
+# NEXT_PUBLIC_INSTAGRAM_APP_ID=your_app_id_here
+# NEXT_PUBLIC_INSTAGRAM_APP_SECRET=your_app_secret_here
 
 # Twitter API（近日対応）
-TWITTER_API_KEY=your_api_key_here
-TWITTER_API_SECRET=your_api_secret_here
+# NEXT_PUBLIC_TWITTER_API_KEY=your_api_key_here
+# NEXT_PUBLIC_TWITTER_API_SECRET=your_api_secret_here
 
 # TikTok API（近日対応）
-TIKTOK_CLIENT_KEY=your_client_key_here
-TIKTOK_CLIENT_SECRET=your_client_secret_here
+# NEXT_PUBLIC_TIKTOK_CLIENT_KEY=your_client_key_here
+# NEXT_PUBLIC_TIKTOK_CLIENT_SECRET=your_client_secret_here
 ```
+
+**YouTube Data API キーの取得方法:**
+1. [Google Cloud Console](https://console.cloud.google.com/)にアクセス
+2. プロジェクトを作成
+3. YouTube Data API v3を有効化
+4. 認証情報でAPIキーを作成
+5. `.env.local`に追加
 
 ## 🎯 料金プラン
 
