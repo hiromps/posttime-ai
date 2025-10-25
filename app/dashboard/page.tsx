@@ -32,7 +32,7 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts';
-import { getChannelInfo, getChannelVideos, analyzeOptimalPostTimes, generateHeatmapFromVideos } from '@/lib/youtube';
+import { getChannelInfo, getChannelVideos, analyzeOptimalPostTimes, generateHeatmapFromVideos, resolveChannelId } from '@/lib/youtube';
 
 // デモユーザー（将来的にSupabase Authに置き換え）
 const demoUser = {
@@ -63,15 +63,18 @@ export default function DashboardPage() {
   });
 
   // チャンネルデータを取得
-  const fetchChannelData = async (id: string) => {
+  const fetchChannelData = async (input: string) => {
     setLoading(true);
     try {
+      // チャンネルIDを解決（@ハンドル、URL、チャンネルIDに対応）
+      const resolvedChannelId = await resolveChannelId(input);
+
       // チャンネル情報取得
-      const channel = await getChannelInfo(id);
+      const channel = await getChannelInfo(resolvedChannelId);
       setChannelData(channel);
 
       // 動画一覧取得
-      const videoList = await getChannelVideos(id, 50);
+      const videoList = await getChannelVideos(resolvedChannelId, 50);
       setVideos(videoList);
 
       // 最適投稿時間分析
@@ -99,22 +102,24 @@ export default function DashboardPage() {
         subscriberGrowth: 0 // APIでは取得不可のため0
       });
 
-      // ローカルストレージに保存
-      localStorage.setItem('lastChannelId', id);
+      // ローカルストレージに保存（入力値とチャンネルIDの両方）
+      localStorage.setItem('lastChannelInput', input);
+      localStorage.setItem('lastChannelId', resolvedChannelId);
     } catch (error) {
       console.error('Error fetching channel data:', error);
-      alert('データの取得に失敗しました。チャンネルIDを確認してください。');
+      const errorMessage = error instanceof Error ? error.message : 'データの取得に失敗しました。';
+      alert(`エラー: ${errorMessage}\n\n入力例:\n・チャンネルID: UCxxxxxxxxxxxxxx\n・@ハンドル: @Galaxy0324\n・URL: https://youtube.com/@Galaxy0324`);
     } finally {
       setLoading(false);
     }
   };
 
-  // 初回ロード時に前回のチャンネルIDを読み込み
+  // 初回ロード時に前回のチャンネル情報を読み込み
   useEffect(() => {
-    const lastChannelId = localStorage.getItem('lastChannelId');
-    if (lastChannelId) {
-      setChannelId(lastChannelId);
-      fetchChannelData(lastChannelId);
+    const lastChannelInput = localStorage.getItem('lastChannelInput');
+    if (lastChannelInput) {
+      setChannelId(lastChannelInput);
+      fetchChannelData(lastChannelInput);
     }
   }, []);
 
@@ -225,14 +230,19 @@ export default function DashboardPage() {
                   <Youtube className="w-16 h-16 mx-auto mb-4 text-red-600" />
                   <h2 className="text-2xl font-bold mb-2">YouTubeチャンネルを接続</h2>
                   <p className="text-gray-600 mb-6">
-                    チャンネルIDを入力して、投稿最適時間の分析を開始しましょう
+                    チャンネルID、@ハンドル名、URLのいずれかを入力してください
                   </p>
                   <div className="max-w-md mx-auto flex gap-4">
                     <Input
                       type="text"
-                      placeholder="チャンネルID (UCxxxxxxxxxxxxxx)"
+                      placeholder="@Galaxy0324 または UCxxxxxx"
                       value={channelId}
                       onChange={(e) => setChannelId(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && channelId && !loading) {
+                          fetchChannelData(channelId);
+                        }
+                      }}
                     />
                     <Button onClick={() => fetchChannelData(channelId)} disabled={loading || !channelId}>
                       {loading ? (
@@ -248,9 +258,12 @@ export default function DashboardPage() {
                       )}
                     </Button>
                   </div>
-                  <p className="text-sm text-gray-500 mt-4">
-                    ヒント: YouTubeチャンネルページのURLから取得できます
-                  </p>
+                  <div className="text-sm text-gray-500 mt-4 space-y-1">
+                    <p className="font-semibold">入力例:</p>
+                    <p>• @ハンドル: @Galaxy0324</p>
+                    <p>• チャンネルID: UCAU1BvGtvG_DKy70U6P3p1A</p>
+                    <p>• URL: https://youtube.com/@Galaxy0324</p>
+                  </div>
                 </div>
               </Card>
             </motion.div>
@@ -363,6 +376,7 @@ export default function DashboardPage() {
                       setChannelData(null);
                       setChannelId('');
                       localStorage.removeItem('lastChannelId');
+                      localStorage.removeItem('lastChannelInput');
                     }}>
                       変更
                     </Button>
