@@ -36,7 +36,8 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts';
-import { getChannelInfo, getChannelVideos, analyzeOptimalPostTimes, generateHeatmapFromVideos, resolveChannelId } from '@/lib/youtube';
+import { fetchYouTubeChannelData } from '@/lib/youtube-client';
+import { analyzeOptimalPostTimes, generateHeatmapFromVideos } from '@/lib/youtube';
 import { getCurrentUser, signOut } from '@/lib/auth';
 
 export default function DashboardPage() {
@@ -68,15 +69,36 @@ export default function DashboardPage() {
   const fetchChannelData = async (input: string) => {
     setLoading(true);
     try {
-      // チャンネルIDを解決（@ハンドル、URL、チャンネルIDに対応）
-      const resolvedChannelId = await resolveChannelId(input);
+      // 新しいクライアントサイド実装を使用
+      const result = await fetchYouTubeChannelData(input);
 
-      // チャンネル情報取得
-      const channel = await getChannelInfo(resolvedChannelId);
-      setChannelData(channel);
+      if (!result.success) {
+        throw new Error(result.error || 'データの取得に失敗しました');
+      }
 
-      // 動画一覧取得
-      const videoList = await getChannelVideos(resolvedChannelId, 50);
+      // チャンネル情報をセット
+      setChannelData({
+        channelId: result.channel.id,
+        channelName: result.channel.name,
+        channelIcon: result.channel.thumbnail,
+        subscriberCount: result.channel.subscriberCount,
+        totalViews: result.channel.viewCount,
+        videosAnalyzed: result.channel.videoCount
+      });
+
+      // 動画リストを変換
+      const videoList = result.videos.map((v: any) => ({
+        id: v.id,
+        title: v.title,
+        thumbnail: v.thumbnail,
+        publishedAt: v.publishedAt,
+        viewCount: v.viewCount,
+        likeCount: v.likeCount,
+        commentCount: v.commentCount,
+        engagementRate: v.viewCount > 0
+          ? ((v.likeCount + v.commentCount) / v.viewCount * 100)
+          : 0
+      }));
       setVideos(videoList);
 
       // 最適投稿時間分析
@@ -104,9 +126,9 @@ export default function DashboardPage() {
         subscriberGrowth: 0 // APIでは取得不可のため0
       });
 
-      // ローカルストレージに保存（入力値とチャンネルIDの両方）
+      // ローカルストレージに保存
       localStorage.setItem('lastChannelInput', input);
-      localStorage.setItem('lastChannelId', resolvedChannelId);
+      localStorage.setItem('lastChannelId', result.channel.id);
     } catch (error) {
       console.error('Error fetching channel data:', error);
       const errorMessage = error instanceof Error ? error.message : 'データの取得に失敗しました。';
