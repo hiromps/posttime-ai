@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 
@@ -12,8 +12,14 @@ export default function TestAPIPage() {
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
+  const [mounted, setMounted] = useState(false);
 
   const API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
+
+  // クライアントサイドでのみ実行
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const testAPIKey = async () => {
     setTesting(true);
@@ -98,11 +104,11 @@ export default function TestAPIPage() {
             </div>
             <div>
               <span className="text-gray-600">現在のURL: </span>
-              <span className="text-blue-600">{typeof window !== 'undefined' ? window.location.href : 'N/A'}</span>
+              <span className="text-blue-600">{mounted ? window.location.href : 'Loading...'}</span>
             </div>
             <div>
               <span className="text-gray-600">オリジン: </span>
-              <span className="text-blue-600">{typeof window !== 'undefined' ? window.location.origin : 'N/A'}</span>
+              <span className="text-blue-600">{mounted ? window.location.origin : 'Loading...'}</span>
             </div>
           </div>
         </Card>
