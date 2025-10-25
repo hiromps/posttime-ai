@@ -92,9 +92,9 @@ export default function DashboardPage() {
       setPerformanceData(performanceGraph);
 
       // 統計計算
-      const totalViews = videoList.reduce((sum, v) => sum + v.viewCount, 0);
+      const totalViews = videoList.reduce((sum: number, v: {viewCount: number}) => sum + v.viewCount, 0);
       const avgEngagement = videoList.length > 0
-        ? videoList.reduce((sum, v) => sum + v.engagementRate, 0) / videoList.length
+        ? videoList.reduce((sum: number, v: {engagementRate: number}) => sum + v.engagementRate, 0) / videoList.length
         : 0;
 
       setStats({
@@ -313,7 +313,7 @@ export default function DashboardPage() {
                       placeholder="@Galaxy0324 または UCxxxxxx"
                       value={channelId}
                       onChange={(e) => setChannelId(e.target.value)}
-                      onKeyPress={(e) => {
+                      onKeyDown={(e) => {
                         if (e.key === 'Enter' && channelId && !loading) {
                           fetchChannelData(channelId);
                         }

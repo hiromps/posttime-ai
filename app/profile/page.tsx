@@ -242,6 +242,7 @@ export default function ProfilePage() {
                 <div className="relative group">
                   <div className="w-32 h-32 rounded-full overflow-hidden bg-purple-100 flex items-center justify-center">
                     {avatarPreview || avatarUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         src={avatarPreview || avatarUrl}
                         alt="Avatar"
@@ -283,7 +284,7 @@ export default function ProfilePage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">プラン</p>
-                  <p className="font-medium">{profile?.plan === 'free' ? '無料プラン' : 'プロプラン'}</p>
+                  <p className="font-medium">無料プラン</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">登録日</p>
